@@ -45,7 +45,7 @@ func (s *Signature) DeriveKey() (string, error) {
 		h.Write([]byte(s.Salt + "signer" + s.SecretKey))
 		key = string(h.Sum(nil))
 	case "hmac":
-		h := hmac.New(func() hash.Hash { return s.DigestMethod() }, []byte(s.SecretKey))
+		h := hmac.New(s.DigestMethod, []byte(s.SecretKey))
 		h.Write([]byte(s.Salt))
 		key = string(h.Sum(nil))
 	case "none":

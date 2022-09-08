@@ -19,7 +19,7 @@ type HMACAlgorithm struct {
 
 // GetSignature returns the signature for the given key and value.
 func (a *HMACAlgorithm) GetSignature(key, value string) []byte {
-	h := hmac.New(func() hash.Hash { return a.DigestMethod() }, []byte(key))
+	h := hmac.New(a.DigestMethod, []byte(key))
 	h.Write([]byte(value))
 	return h.Sum(nil)
 }
