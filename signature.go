@@ -35,8 +35,6 @@ func (s *Signature) DeriveKey() (string, error) {
 	var key string
 	var err error
 
-	s.DigestMethod().Reset()
-
 	switch s.KeyDerivation {
 	case "concat":
 		h := s.DigestMethod()
