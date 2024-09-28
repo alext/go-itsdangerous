@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"time"
 )
 
 type URLSafeSerializer struct {
@@ -30,6 +31,33 @@ func (s *URLSafeSerializer) Unmarshal(value string) (interface{}, error) {
 	result, err := s.Signer.Unsign(value)
 	if err != nil {
 		return nil, err
+	}
+
+	return urlSafeDeserialize(result)
+}
+
+type URLSafeTimedSerializer struct {
+	TimestampSigner
+}
+
+func NewURLSafeTimedSerializer(secret, salt string) *URLSafeTimedSerializer {
+	s := NewTimestampSigner(secret, salt)
+	return &URLSafeTimedSerializer{TimestampSigner: *s}
+}
+
+func (s *URLSafeTimedSerializer) Marshal(value interface{}) (string, error) {
+	encoded, err := urlSafeSerialize(value)
+	if err != nil {
+		return "", err
+	}
+
+	return s.TimestampSigner.Sign(encoded), nil
+}
+
+func (s *URLSafeTimedSerializer) Unmarshal(value string, maxAge time.Duration) (interface{}, error) {
+	result, err := s.TimestampSigner.Unsign(value, maxAge)
+	if err != nil {
+		return "", err
 	}
 
 	return urlSafeDeserialize(result)

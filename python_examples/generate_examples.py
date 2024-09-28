@@ -1,6 +1,6 @@
 from freezegun import freeze_time
 from itsdangerous import Signer, TimestampSigner
-from itsdangerous.url_safe import URLSafeSerializer
+from itsdangerous.url_safe import URLSafeSerializer, URLSafeTimedSerializer
 
 key = "secret_key"
 salt = "salt"
@@ -25,3 +25,11 @@ s = URLSafeSerializer(key, salt)
 print("  'my string' -> ", s.dumps("my string"))
 print("  dict(foo='bar') -> ", s.dumps(dict(foo='bar')))
 print("  'aaaaaaaaaaaaaaaaaaa' -> ", s.dumps("aaaaaaaaaaaaaaaaaaa"))
+
+print()
+print(f"URLSafeTimedSerializer examples {key=} {salt=}")
+s = URLSafeTimedSerializer(key, salt)
+with freeze_time("2024-09-27T14:00:00Z"):
+    print("  'my string' ->", s.dumps("my string"), "at time 2024-09-27T14:00:00Z")
+    print("  dict(foo='bar') -> ", s.dumps(dict(foo='bar')), "at time 2024-09-27T14:00:00Z")
+    print("  'aaaaaaaaaaaaaaaaaaa' -> ", s.dumps("aaaaaaaaaaaaaaaaaaa"), "at time 2024-09-27T14:00:00Z")
