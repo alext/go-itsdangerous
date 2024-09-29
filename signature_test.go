@@ -44,6 +44,9 @@ func TestTimestampSignatureSign(t *testing.T) {
 			expected: "my string.Zva6YA.aqBNzGvNEDkO6RGFPEX1HIhz0vU"},
 		{input: "my string", now: time.Date(2024, 9, 27, 15, 0, 0, 0, time.UTC),
 			expected: "my string.ZvbIcA.VVQqPkaZ-YQaLHomuudMzTiw45Q"},
+		// Test with timestamp > 4 bytes
+		{input: "my string", now: time.Date(2124, 9, 27, 15, 0, 0, 0, time.UTC),
+			expected: "my string.ASMOinA.eGqsFVFmYbv8t7tXD8PX7LHSXdY"},
 	}
 	for _, test := range tests {
 		test := test
@@ -83,6 +86,11 @@ func TestTimestampSignatureUnsign(t *testing.T) {
 		// maxAge zero always validates
 		{input: "my string.Zva6YA.aqBNzGvNEDkO6RGFPEX1HIhz0vU", expected: "my string",
 			now: time.Date(2024, 9, 27, 14, 5, 1, 0, time.UTC), maxAge: 0},
+		// Test with timestamp > 4 bytes
+		{input: "my string.ASMOinA.eGqsFVFmYbv8t7tXD8PX7LHSXdY", expected: "my string",
+			now: time.Date(2124, 9, 27, 15, 4, 59, 0, time.UTC), maxAge: 5 * 60},
+		{input: "my string.ASMOinA.eGqsFVFmYbv8t7tXD8PX7LHSXdY", expectError: true,
+			now: time.Date(2124, 9, 27, 15, 5, 1, 0, time.UTC), maxAge: 5 * 60},
 	}
 	for _, test := range tests {
 		test := test

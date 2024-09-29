@@ -148,7 +148,11 @@ func (s *TimestampSignature) Sign(value string) (string, error) {
 		return "", err
 	}
 
-	ts := base64Encode(buf.Bytes())
+	tsBytes := buf.Bytes()
+	// trim leading zeroes
+	tsBytes = bytes.TrimLeft(tsBytes, "\x00")
+
+	ts := base64Encode(tsBytes)
 	val := value + s.Sep + ts
 
 	sig, err := s.Get(val)
@@ -160,8 +164,6 @@ func (s *TimestampSignature) Sign(value string) (string, error) {
 
 // Unsign the given string.
 func (s *TimestampSignature) Unsign(value string, maxAge uint32) (string, error) {
-	var timestamp uint32
-
 	result, err := s.Signature.Unsign(value)
 	if err != nil {
 		return "", err
@@ -175,18 +177,26 @@ func (s *TimestampSignature) Unsign(value string, maxAge uint32) (string, error)
 	li := strings.LastIndex(result, s.Sep)
 	val, ts := result[:li], result[li+len(s.Sep):]
 
-	sig, err := base64Decode(ts)
+	tsBytes, err := base64Decode(ts)
 	if err != nil {
 		return "", err
 	}
+	// left pad up to 8 bytes
+	if len(tsBytes) < 8 {
+		tsBytes = append(
+			make([]byte, 8-len(tsBytes)),
+			tsBytes...,
+		)
+	}
 
-	buf := bytes.NewReader([]byte(sig))
+	var timestamp int64
+	var buf = bytes.NewReader([]byte(tsBytes))
 	if err = binary.Read(buf, binary.BigEndian, &timestamp); err != nil {
 		return "", err
 	}
 
 	if maxAge > 0 {
-		if age := getTimestamp() - timestamp; age > maxAge {
+		if age := getTimestamp() - timestamp; uint32(age) > maxAge {
 			return "", fmt.Errorf("signature age %d > %d seconds", age, maxAge)
 		}
 	}
