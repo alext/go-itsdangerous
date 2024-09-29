@@ -142,13 +142,8 @@ type TimestampSignature struct {
 
 // Sign the given string.
 func (s *TimestampSignature) Sign(value string) (string, error) {
-	buf := new(bytes.Buffer)
-
-	if err := binary.Write(buf, binary.BigEndian, getTimestamp()); err != nil {
-		return "", err
-	}
-
-	tsBytes := buf.Bytes()
+	tsBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(tsBytes, uint64(getTimestamp()))
 	// trim leading zeroes
 	tsBytes = bytes.TrimLeft(tsBytes, "\x00")
 
@@ -189,11 +184,7 @@ func (s *TimestampSignature) Unsign(value string, maxAge uint32) (string, error)
 		)
 	}
 
-	var timestamp int64
-	var buf = bytes.NewReader([]byte(tsBytes))
-	if err = binary.Read(buf, binary.BigEndian, &timestamp); err != nil {
-		return "", err
-	}
+	var timestamp = int64(binary.BigEndian.Uint64(tsBytes))
 
 	if maxAge > 0 {
 		if age := getTimestamp() - timestamp; uint32(age) > maxAge {
