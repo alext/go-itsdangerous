@@ -148,11 +148,7 @@ func (s *TimestampSigner) Sign(value string) (string, error) {
 	ts := base64Encode(tsBytes)
 	val := value + s.Sep + ts
 
-	sig, err := s.GetSignature(val)
-	if err != nil {
-		return "", err
-	}
-	return val + s.Sep + sig, nil
+	return s.Signer.Sign(val)
 }
 
 // Unsign the given string.
