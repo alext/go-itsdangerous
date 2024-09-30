@@ -31,27 +31,27 @@ type Signer struct {
 // DeriveKey generates a key derivation. Keep in mind that the key derivation in itsdangerous
 // is not intended to be used as a security method to make a complex key out of a short password.
 // Instead you should use large random secret keys.
-func (s *Signer) DeriveKey() (string, error) {
-	var key string
+func (s *Signer) DeriveKey() ([]byte, error) {
+	var key []byte
 	var err error
 
 	switch s.KeyDerivation {
 	case "concat":
 		h := s.DigestMethod()
 		h.Write([]byte(s.Salt + s.SecretKey))
-		key = string(h.Sum(nil))
+		key = h.Sum(nil)
 	case "django-concat":
 		h := s.DigestMethod()
 		h.Write([]byte(s.Salt + "signer" + s.SecretKey))
-		key = string(h.Sum(nil))
+		key = h.Sum(nil)
 	case "hmac":
 		h := hmac.New(s.DigestMethod, []byte(s.SecretKey))
 		h.Write([]byte(s.Salt))
-		key = string(h.Sum(nil))
+		key = h.Sum(nil)
 	case "none":
-		key = s.SecretKey
+		key = []byte(s.SecretKey)
 	default:
-		key, err = "", errors.New("unknown key derivation method")
+		key, err = nil, errors.New("unknown key derivation method")
 	}
 	return key, err
 }
