@@ -11,15 +11,15 @@ func assert(t *testing.T, actual, expected string) {
 	}
 }
 
-func TestSignatureSign(t *testing.T) {
-	s := NewSignature("secret-key", "", "", "", nil, nil)
+func TestSignerSign(t *testing.T) {
+	s := NewSigner("secret-key", "", "", "", nil, nil)
 	expected := "my string.wh6tMHxLgJqB6oY1uT73iMlyrOA"
 	actual, _ := s.Sign("my string")
 	assert(t, actual, expected)
 }
 
-func TestSignatureUnsign(t *testing.T) {
-	s := NewSignature("secret-key", "", "", "", nil, nil)
+func TestSignerUnsign(t *testing.T) {
+	s := NewSigner("secret-key", "", "", "", nil, nil)
 	expected := "my string"
 	actual, _ := s.Unsign("my string.wh6tMHxLgJqB6oY1uT73iMlyrOA")
 	assert(t, actual, expected)
@@ -34,7 +34,7 @@ Examples generated in Python as follows:
 		print(s.sign("my string"))
 */
 
-func TestTimestampSignatureSign(t *testing.T) {
+func TestTimestampSignerSign(t *testing.T) {
 	tests := []struct {
 		input    string
 		now      time.Time
@@ -56,7 +56,7 @@ func TestTimestampSignatureSign(t *testing.T) {
 				defer func() { NowFunc = time.Now }()
 			}
 
-			sig := NewTimestampSignature("secret_key", "salt", "", "", nil, nil)
+			sig := NewTimestampSigner("secret_key", "salt", "", "", nil, nil)
 
 			actual, err := sig.Sign(test.input)
 			if err != nil {
@@ -69,7 +69,7 @@ func TestTimestampSignatureSign(t *testing.T) {
 	}
 }
 
-func TestTimestampSignatureUnsign(t *testing.T) {
+func TestTimestampSignerUnsign(t *testing.T) {
 	tests := []struct {
 		input       string
 		expected    string
@@ -100,7 +100,7 @@ func TestTimestampSignatureUnsign(t *testing.T) {
 				defer func() { NowFunc = time.Now }()
 			}
 
-			sig := NewTimestampSignature("secret_key", "salt", "", "", nil, nil)
+			sig := NewTimestampSigner("secret_key", "salt", "", "", nil, nil)
 
 			actual, err := sig.Unsign(test.input, test.maxAge)
 			if test.expectError {

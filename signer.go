@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// Signature can sign bytes and unsign it and validate the signature
+// Signer can sign bytes and unsign it and validate the signature
 // provided.
 //
 // Salt can be used to namespace the hash, so that a signed string is only
@@ -19,7 +19,7 @@ import (
 // a salt value across different parts of your application where the same
 // signed value in one part can mean something different in another part
 // is a security risk.
-type Signature struct {
+type Signer struct {
 	SecretKey     string
 	Sep           string
 	Salt          string
@@ -31,7 +31,7 @@ type Signature struct {
 // DeriveKey generates a key derivation. Keep in mind that the key derivation in itsdangerous
 // is not intended to be used as a security method to make a complex key out of a short password.
 // Instead you should use large random secret keys.
-func (s *Signature) DeriveKey() (string, error) {
+func (s *Signer) DeriveKey() (string, error) {
 	var key string
 	var err error
 
@@ -56,8 +56,8 @@ func (s *Signature) DeriveKey() (string, error) {
 	return key, err
 }
 
-// Get returns the signature for the given value.
-func (s *Signature) Get(value string) (string, error) {
+// GetSignature returns the signature for the given value.
+func (s *Signer) GetSignature(value string) (string, error) {
 	key, err := s.DeriveKey()
 	if err != nil {
 		return "", err
@@ -67,8 +67,8 @@ func (s *Signature) Get(value string) (string, error) {
 	return base64Encode(sig), err
 }
 
-// Verify verifies the signature for the given value.
-func (s *Signature) Verify(value, sig string) (bool, error) {
+// VerifySignature verifies the signature for the given value.
+func (s *Signer) VerifySignature(value, sig string) (bool, error) {
 	key, err := s.DeriveKey()
 	if err != nil {
 		return false, err
@@ -82,8 +82,8 @@ func (s *Signature) Verify(value, sig string) (bool, error) {
 }
 
 // Sign the given string.
-func (s *Signature) Sign(value string) (string, error) {
-	sig, err := s.Get(value)
+func (s *Signer) Sign(value string) (string, error) {
+	sig, err := s.GetSignature(value)
 	if err != nil {
 		return "", err
 	}
@@ -91,7 +91,7 @@ func (s *Signature) Sign(value string) (string, error) {
 }
 
 // Unsign the given string.
-func (s *Signature) Unsign(signed string) (string, error) {
+func (s *Signer) Unsign(signed string) (string, error) {
 	if !strings.Contains(signed, s.Sep) {
 		return "", fmt.Errorf("no %s found in value", s.Sep)
 	}
@@ -99,14 +99,14 @@ func (s *Signature) Unsign(signed string) (string, error) {
 	li := strings.LastIndex(signed, s.Sep)
 	value, sig := signed[:li], signed[li+len(s.Sep):]
 
-	if ok, _ := s.Verify(value, sig); ok == true {
+	if ok, _ := s.VerifySignature(value, sig); ok == true {
 		return value, nil
 	}
 	return "", fmt.Errorf("signature %s does not match", sig)
 }
 
-// NewSignature creates a new Signature
-func NewSignature(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) *Signature {
+// NewSigner creates a new Signer
+func NewSigner(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) *Signer {
 	if salt == "" {
 		salt = "itsdangerous.Signer"
 	}
@@ -122,7 +122,7 @@ func NewSignature(secret, salt, sep, derivation string, digest func() hash.Hash,
 	if algo == nil {
 		algo = &HMACAlgorithm{DigestMethod: digest}
 	}
-	return &Signature{
+	return &Signer{
 		SecretKey:     secret,
 		Salt:          salt,
 		Sep:           sep,
@@ -132,14 +132,14 @@ func NewSignature(secret, salt, sep, derivation string, digest func() hash.Hash,
 	}
 }
 
-// TimestampSignature works like the regular Signature but also records the time
+// TimestampSigner works like the regular Signer but also records the time
 // of the signing and can be used to expire signatures.
-type TimestampSignature struct {
-	Signature
+type TimestampSigner struct {
+	Signer
 }
 
 // Sign the given string.
-func (s *TimestampSignature) Sign(value string) (string, error) {
+func (s *TimestampSigner) Sign(value string) (string, error) {
 	tsBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(tsBytes, uint64(getTimestamp()))
 	// trim leading zeroes
@@ -148,7 +148,7 @@ func (s *TimestampSignature) Sign(value string) (string, error) {
 	ts := base64Encode(tsBytes)
 	val := value + s.Sep + ts
 
-	sig, err := s.Get(val)
+	sig, err := s.GetSignature(val)
 	if err != nil {
 		return "", err
 	}
@@ -156,8 +156,8 @@ func (s *TimestampSignature) Sign(value string) (string, error) {
 }
 
 // Unsign the given string.
-func (s *TimestampSignature) Unsign(value string, maxAge uint32) (string, error) {
-	result, err := s.Signature.Unsign(value)
+func (s *TimestampSigner) Unsign(value string, maxAge uint32) (string, error) {
+	result, err := s.Signer.Unsign(value)
 	if err != nil {
 		return "", err
 	}
@@ -192,8 +192,8 @@ func (s *TimestampSignature) Unsign(value string, maxAge uint32) (string, error)
 	return val, nil
 }
 
-// NewTimestampSignature creates a new TimestampSignature
-func NewTimestampSignature(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) *TimestampSignature {
-	s := NewSignature(secret, salt, sep, derivation, digest, algo)
-	return &TimestampSignature{Signature: *s}
+// NewTimestampSigner creates a new TimestampSigner
+func NewTimestampSigner(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) *TimestampSigner {
+	s := NewSigner(secret, salt, sep, derivation, digest, algo)
+	return &TimestampSigner{Signer: *s}
 }
