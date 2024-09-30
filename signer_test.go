@@ -5,34 +5,62 @@ import (
 	"time"
 )
 
-func assert(t *testing.T, actual, expected string) {
-	if actual != expected {
-		t.Errorf("expecting %s, got %s instead", expected, actual)
+// Example values here generated from Python using generate_examples.py script
+
+func TestSignerSign(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{input: "my string", expected: "my string.xv0r21ogoygusbkJA01c4OxsAio"},
+		{input: "aaaaaaaaaaaaaaaa", expected: "aaaaaaaaaaaaaaaa.Ot23yopX-I7Y6_e0hoZg6VKAcLk"},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.input, func(t *testing.T) {
+			sig := NewSigner("secret_key", "salt", "", "", nil, nil)
+
+			actual, err := sig.Sign(test.input)
+			if err != nil {
+				t.Fatalf("Sign(%s) returned error: %s", test.input, err)
+			}
+			if actual != test.expected {
+				t.Errorf("Sign(%s) got %s; want %s", test.input, actual, test.expected)
+			}
+		})
 	}
 }
 
-func TestSignerSign(t *testing.T) {
-	s := NewSigner("secret-key", "", "", "", nil, nil)
-	expected := "my string.wh6tMHxLgJqB6oY1uT73iMlyrOA"
-	actual, _ := s.Sign("my string")
-	assert(t, actual, expected)
-}
-
 func TestSignerUnsign(t *testing.T) {
-	s := NewSigner("secret-key", "", "", "", nil, nil)
-	expected := "my string"
-	actual, _ := s.Unsign("my string.wh6tMHxLgJqB6oY1uT73iMlyrOA")
-	assert(t, actual, expected)
-}
+	tests := []struct {
+		input       string
+		expected    string
+		expectError bool
+	}{
+		{input: "my string.xv0r21ogoygusbkJA01c4OxsAio", expected: "my string"},
+		{input: "altered string.xv0r21ogoygusbkJA01c4OxsAio", expectError: true},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.input, func(t *testing.T) {
+			sig := NewSigner("secret_key", "salt", "", "", nil, nil)
 
-/*
-Examples generated in Python as follows:
-	from freezegun import freeze_time
-	from itsdangerous import TimestampSigner
-	with freeze_time("2024-09-27T14:00:00Z"):
-		s = TimestampSigner("secret_key", "salt")
-		print(s.sign("my string"))
-*/
+			actual, err := sig.Unsign(test.input)
+			if test.expectError {
+				if err == nil {
+					t.Fatalf("Unsign(%s) expected error; got no error", test.input)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Unsign(%s) returned error: %s", test.input, err)
+				}
+				if actual != test.expected {
+					t.Errorf("Unsign(%s) got %s; want %s", test.input, actual, test.expected)
+				}
+			}
+		})
+	}
+}
 
 func TestTimestampSignerSign(t *testing.T) {
 	tests := []struct {
