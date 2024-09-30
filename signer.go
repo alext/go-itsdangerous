@@ -28,83 +28,6 @@ type Signer struct {
 	Algorithm     SigningAlgorithm
 }
 
-// DeriveKey generates a key derivation. Keep in mind that the key derivation in itsdangerous
-// is not intended to be used as a security method to make a complex key out of a short password.
-// Instead you should use large random secret keys.
-func (s *Signer) DeriveKey() ([]byte, error) {
-	var key []byte
-	var err error
-
-	switch s.KeyDerivation {
-	case "concat":
-		h := s.DigestMethod()
-		h.Write([]byte(s.Salt + s.SecretKey))
-		key = h.Sum(nil)
-	case "django-concat":
-		h := s.DigestMethod()
-		h.Write([]byte(s.Salt + "signer" + s.SecretKey))
-		key = h.Sum(nil)
-	case "hmac":
-		h := hmac.New(s.DigestMethod, []byte(s.SecretKey))
-		h.Write([]byte(s.Salt))
-		key = h.Sum(nil)
-	case "none":
-		key = []byte(s.SecretKey)
-	default:
-		key, err = nil, errors.New("unknown key derivation method")
-	}
-	return key, err
-}
-
-// GetSignature returns the signature for the given value.
-func (s *Signer) GetSignature(value string) (string, error) {
-	key, err := s.DeriveKey()
-	if err != nil {
-		return "", err
-	}
-
-	sig := s.Algorithm.GetSignature(key, value)
-	return base64Encode(sig), err
-}
-
-// VerifySignature verifies the signature for the given value.
-func (s *Signer) VerifySignature(value, sig string) (bool, error) {
-	key, err := s.DeriveKey()
-	if err != nil {
-		return false, err
-	}
-
-	signed, err := base64Decode(sig)
-	if err != nil {
-		return false, err
-	}
-	return s.Algorithm.VerifySignature(key, value, signed), nil
-}
-
-// Sign the given string.
-func (s *Signer) Sign(value string) (string, error) {
-	sig, err := s.GetSignature(value)
-	if err != nil {
-		return "", err
-	}
-	return value + s.Sep + sig, nil
-}
-
-// Unsign the given string.
-func (s *Signer) Unsign(signed string) (string, error) {
-	if !strings.Contains(signed, s.Sep) {
-		return "", fmt.Errorf("no %s found in value", s.Sep)
-	}
-
-	li := strings.LastIndex(signed, s.Sep)
-	value, sig := signed[:li], signed[li+len(s.Sep):]
-
-	if ok, _ := s.VerifySignature(value, sig); ok == true {
-		return value, nil
-	}
-	return "", fmt.Errorf("signature %s does not match", sig)
-}
-
 // NewSigner creates a new Signer
 func NewSigner(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) *Signer {
 	if salt == "" {
@@ -132,10 +55,93 @@ func NewSigner(secret, salt, sep, derivation string, digest func() hash.Hash, al
 	}
 }
 
+// deriveKey generates a key derivation. Keep in mind that the key derivation in itsdangerous
+// is not intended to be used as a security method to make a complex key out of a short password.
+// Instead you should use large random secret keys.
+func (s *Signer) deriveKey() ([]byte, error) {
+	var key []byte
+	var err error
+
+	switch s.KeyDerivation {
+	case "concat":
+		h := s.DigestMethod()
+		h.Write([]byte(s.Salt + s.SecretKey))
+		key = h.Sum(nil)
+	case "django-concat":
+		h := s.DigestMethod()
+		h.Write([]byte(s.Salt + "signer" + s.SecretKey))
+		key = h.Sum(nil)
+	case "hmac":
+		h := hmac.New(s.DigestMethod, []byte(s.SecretKey))
+		h.Write([]byte(s.Salt))
+		key = h.Sum(nil)
+	case "none":
+		key = []byte(s.SecretKey)
+	default:
+		key, err = nil, errors.New("unknown key derivation method")
+	}
+	return key, err
+}
+
+// getSignature returns the signature for the given value.
+func (s *Signer) getSignature(value string) (string, error) {
+	key, err := s.deriveKey()
+	if err != nil {
+		return "", err
+	}
+
+	sig := s.Algorithm.GetSignature(key, value)
+	return base64Encode(sig), err
+}
+
+// verifySignature verifies the signature for the given value.
+func (s *Signer) verifySignature(value, signature string) (bool, error) {
+	key, err := s.deriveKey()
+	if err != nil {
+		return false, err
+	}
+
+	signed, err := base64Decode(signature)
+	if err != nil {
+		return false, err
+	}
+	return s.Algorithm.VerifySignature(key, value, signed), nil
+}
+
+// Sign the given string.
+func (s *Signer) Sign(value string) (string, error) {
+	sig, err := s.getSignature(value)
+	if err != nil {
+		return "", err
+	}
+	return value + s.Sep + sig, nil
+}
+
+// Unsign the given string.
+func (s *Signer) Unsign(signed string) (string, error) {
+	if !strings.Contains(signed, s.Sep) {
+		return "", fmt.Errorf("no %s found in value", s.Sep)
+	}
+
+	li := strings.LastIndex(signed, s.Sep)
+	value, sig := signed[:li], signed[li+len(s.Sep):]
+
+	if ok, _ := s.verifySignature(value, sig); ok == true {
+		return value, nil
+	}
+	return "", fmt.Errorf("signature %s does not match", sig)
+}
+
 // TimestampSigner works like the regular Signer but also records the time
 // of the signing and can be used to expire signatures.
 type TimestampSigner struct {
 	Signer
+}
+
+// NewTimestampSigner creates a new TimestampSigner
+func NewTimestampSigner(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) *TimestampSigner {
+	s := NewSigner(secret, salt, sep, derivation, digest, algo)
+	return &TimestampSigner{Signer: *s}
 }
 
 // Sign the given string.
@@ -186,10 +192,4 @@ func (s *TimestampSigner) Unsign(value string, maxAge uint32) (string, error) {
 		}
 	}
 	return val, nil
-}
-
-// NewTimestampSigner creates a new TimestampSigner
-func NewTimestampSigner(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) *TimestampSigner {
-	s := NewSigner(secret, salt, sep, derivation, digest, algo)
-	return &TimestampSigner{Signer: *s}
 }

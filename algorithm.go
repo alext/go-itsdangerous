@@ -8,7 +8,7 @@ import (
 // SigningAlgorithm provides interfaces to generate and verify signature
 type SigningAlgorithm interface {
 	GetSignature(key []byte, value string) []byte
-	VerifySignature(key []byte, value string, sig []byte) bool
+	VerifySignature(key []byte, value string, signature []byte) bool
 }
 
 // HMACAlgorithm provides signature generation using HMACs.
@@ -24,9 +24,9 @@ func (a *HMACAlgorithm) GetSignature(key []byte, value string) []byte {
 }
 
 // VerifySignature verifies the given signature matches the expected signature.
-func (a *HMACAlgorithm) VerifySignature(key []byte, value string, sig []byte) bool {
+func (a *HMACAlgorithm) VerifySignature(key []byte, value string, signature []byte) bool {
 	return hmac.Equal(
-		sig,
+		signature,
 		a.GetSignature(key, value),
 	)
 }
