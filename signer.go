@@ -21,12 +21,12 @@ import (
 // signed value in one part can mean something different in another part
 // is a security risk.
 type Signer struct {
-	SecretKey     string
-	Sep           string
-	Salt          string
-	KeyDerivation string
-	DigestMethod  func() hash.Hash
-	Algorithm     SigningAlgorithm
+	secretKey     string
+	salt          string
+	sep           string
+	keyDerivation string
+	digestMethod  func() hash.Hash
+	algorithm     SigningAlgorithm
 }
 
 // NewSigner creates a new Signer with the given secret and salt. All other
@@ -54,12 +54,12 @@ func NewSignerWithOptions(secret, salt, sep, derivation string, digest func() ha
 		algo = &HMACAlgorithm{DigestMethod: digest}
 	}
 	return &Signer{
-		SecretKey:     secret,
-		Salt:          salt,
-		Sep:           sep,
-		KeyDerivation: derivation,
-		DigestMethod:  digest,
-		Algorithm:     algo,
+		secretKey:     secret,
+		salt:          salt,
+		sep:           sep,
+		keyDerivation: derivation,
+		digestMethod:  digest,
+		algorithm:     algo,
 	}
 }
 
@@ -70,21 +70,21 @@ func (s *Signer) deriveKey() ([]byte, error) {
 	var key []byte
 	var err error
 
-	switch s.KeyDerivation {
+	switch s.keyDerivation {
 	case "concat":
-		h := s.DigestMethod()
-		h.Write([]byte(s.Salt + s.SecretKey))
+		h := s.digestMethod()
+		h.Write([]byte(s.salt + s.secretKey))
 		key = h.Sum(nil)
 	case "django-concat":
-		h := s.DigestMethod()
-		h.Write([]byte(s.Salt + "signer" + s.SecretKey))
+		h := s.digestMethod()
+		h.Write([]byte(s.salt + "signer" + s.secretKey))
 		key = h.Sum(nil)
 	case "hmac":
-		h := hmac.New(s.DigestMethod, []byte(s.SecretKey))
-		h.Write([]byte(s.Salt))
+		h := hmac.New(s.digestMethod, []byte(s.secretKey))
+		h.Write([]byte(s.salt))
 		key = h.Sum(nil)
 	case "none":
-		key = []byte(s.SecretKey)
+		key = []byte(s.secretKey)
 	default:
 		key, err = nil, errors.New("unknown key derivation method")
 	}
@@ -98,7 +98,7 @@ func (s *Signer) getSignature(value string) (string, error) {
 		return "", err
 	}
 
-	sig := s.Algorithm.GetSignature(key, value)
+	sig := s.algorithm.GetSignature(key, value)
 	return base64Encode(sig), err
 }
 
@@ -113,7 +113,7 @@ func (s *Signer) verifySignature(value, signature string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return s.Algorithm.VerifySignature(key, value, signed), nil
+	return s.algorithm.VerifySignature(key, value, signed), nil
 }
 
 // Sign the given string.
@@ -122,17 +122,17 @@ func (s *Signer) Sign(value string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return value + s.Sep + sig, nil
+	return value + s.sep + sig, nil
 }
 
 // Unsign the given string.
 func (s *Signer) Unsign(signed string) (string, error) {
-	if !strings.Contains(signed, s.Sep) {
-		return "", fmt.Errorf("no %s found in value", s.Sep)
+	if !strings.Contains(signed, s.sep) {
+		return "", fmt.Errorf("no %s found in value", s.sep)
 	}
 
-	li := strings.LastIndex(signed, s.Sep)
-	value, sig := signed[:li], signed[li+len(s.Sep):]
+	li := strings.LastIndex(signed, s.sep)
+	value, sig := signed[:li], signed[li+len(s.sep):]
 
 	if ok, _ := s.verifySignature(value, sig); ok == true {
 		return value, nil
@@ -168,7 +168,7 @@ func (s *TimestampSigner) Sign(value string) (string, error) {
 	tsBytes = bytes.TrimLeft(tsBytes, "\x00")
 
 	ts := base64Encode(tsBytes)
-	val := value + s.Sep + ts
+	val := value + s.sep + ts
 
 	return s.Signer.Sign(val)
 }
@@ -181,12 +181,12 @@ func (s *TimestampSigner) Unsign(value string, maxAge time.Duration) (string, er
 	}
 
 	// If there is no timestamp in the result there is something seriously wrong.
-	if !strings.Contains(result, s.Sep) {
+	if !strings.Contains(result, s.sep) {
 		return "", errors.New("timestamp missing")
 	}
 
-	li := strings.LastIndex(result, s.Sep)
-	val, ts := result[:li], result[li+len(s.Sep):]
+	li := strings.LastIndex(result, s.sep)
+	val, ts := result[:li], result[li+len(s.sep):]
 
 	tsBytes, err := base64Decode(ts)
 	if err != nil {
