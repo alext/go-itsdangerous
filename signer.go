@@ -21,23 +21,25 @@ import (
 // signed value in one part can mean something different in another part
 // is a security risk.
 type Signer struct {
-	secretKey     string
-	salt          string
-	sep           string
-	keyDerivation string
-	digestMethod  func() hash.Hash
-	algorithm     SigningAlgorithm
+	sep       string
+	key       []byte
+	algorithm SigningAlgorithm
 }
 
 // NewSigner creates a new Signer with the given secret and salt. All other
 // properties will be set to match the Python itsdangerous defaults.
 func NewSigner(secret, salt string) *Signer {
-	return NewSignerWithOptions(secret, salt, "", "", nil, nil)
+	s, err := NewSignerWithOptions(secret, salt, "", "", nil, nil)
+	if err != nil {
+		// This shouldn't be possible with default arguments.
+		panic(err)
+	}
+	return s
 }
 
 // NewSignerWithOptions creates a new Signer allowing overiding the default
 // properties.
-func NewSignerWithOptions(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) *Signer {
+func NewSignerWithOptions(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) (*Signer, error) {
 	if salt == "" {
 		salt = "itsdangerous.Signer"
 	}
@@ -53,76 +55,62 @@ func NewSignerWithOptions(secret, salt, sep, derivation string, digest func() ha
 	if algo == nil {
 		algo = &HMACAlgorithm{DigestMethod: digest}
 	}
-	return &Signer{
-		secretKey:     secret,
-		salt:          salt,
-		sep:           sep,
-		keyDerivation: derivation,
-		digestMethod:  digest,
-		algorithm:     algo,
+	s := &Signer{
+		sep:       sep,
+		algorithm: algo,
 	}
+	var err error
+	s.key, err = deriveKey(secret, salt, derivation, digest)
+	return s, err
 }
 
 // deriveKey generates a key derivation. Keep in mind that the key derivation in itsdangerous
 // is not intended to be used as a security method to make a complex key out of a short password.
 // Instead you should use large random secret keys.
-func (s *Signer) deriveKey() ([]byte, error) {
+func deriveKey(secretKey, salt, keyDerivation string, digestMethod func() hash.Hash) ([]byte, error) {
 	var key []byte
 	var err error
 
-	switch s.keyDerivation {
+	switch keyDerivation {
 	case "concat":
-		h := s.digestMethod()
-		h.Write([]byte(s.salt + s.secretKey))
+		h := digestMethod()
+		h.Write([]byte(salt + secretKey))
 		key = h.Sum(nil)
 	case "django-concat":
-		h := s.digestMethod()
-		h.Write([]byte(s.salt + "signer" + s.secretKey))
+		h := digestMethod()
+		h.Write([]byte(salt + "signer" + secretKey))
 		key = h.Sum(nil)
 	case "hmac":
-		h := hmac.New(s.digestMethod, []byte(s.secretKey))
-		h.Write([]byte(s.salt))
+		h := hmac.New(digestMethod, []byte(secretKey))
+		h.Write([]byte(salt))
 		key = h.Sum(nil)
 	case "none":
-		key = []byte(s.secretKey)
+		key = []byte(secretKey)
 	default:
-		key, err = nil, errors.New("unknown key derivation method")
+		err = errors.New("unknown key derivation method " + keyDerivation)
 	}
 	return key, err
 }
 
 // getSignature returns the signature for the given value.
-func (s *Signer) getSignature(value string) (string, error) {
-	key, err := s.deriveKey()
-	if err != nil {
-		return "", err
-	}
-
-	sig := s.algorithm.GetSignature(key, value)
-	return base64Encode(sig), err
+func (s *Signer) getSignature(value string) string {
+	sig := s.algorithm.GetSignature(s.key, value)
+	return base64Encode(sig)
 }
 
 // verifySignature verifies the signature for the given value.
 func (s *Signer) verifySignature(value, signature string) (bool, error) {
-	key, err := s.deriveKey()
-	if err != nil {
-		return false, err
-	}
-
 	signed, err := base64Decode(signature)
 	if err != nil {
 		return false, err
 	}
-	return s.algorithm.VerifySignature(key, value, signed), nil
+	return s.algorithm.VerifySignature(s.key, value, signed), nil
 }
 
 // Sign the given string.
-func (s *Signer) Sign(value string) (string, error) {
-	sig, err := s.getSignature(value)
-	if err != nil {
-		return "", err
-	}
-	return value + s.sep + sig, nil
+func (s *Signer) Sign(value string) string {
+	sig := s.getSignature(value)
+	return value + s.sep + sig
 }
 
 // Unsign the given string.
@@ -150,18 +138,22 @@ type TimestampSigner struct {
 // salt. All other properties will be set to match the Python itsdangerous
 // defaults.
 func NewTimestampSigner(secret, salt string) *TimestampSigner {
-	return NewTimestampSignerWithOptions(secret, salt, "", "", nil, nil)
+	s := NewSigner(secret, salt)
+	return &TimestampSigner{Signer: *s}
 }
 
 // NewTimestampSignerWithOptions creates a new TimestampSigner allowing
 // overiding the default properties.
-func NewTimestampSignerWithOptions(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) *TimestampSigner {
-	s := NewSignerWithOptions(secret, salt, sep, derivation, digest, algo)
-	return &TimestampSigner{Signer: *s}
+func NewTimestampSignerWithOptions(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) (*TimestampSigner, error) {
+	s, err := NewSignerWithOptions(secret, salt, sep, derivation, digest, algo)
+	if err != nil {
+		return nil, err
+	}
+	return &TimestampSigner{Signer: *s}, nil
 }
 
 // Sign the given string.
-func (s *TimestampSigner) Sign(value string) (string, error) {
+func (s *TimestampSigner) Sign(value string) string {
 	tsBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(tsBytes, uint64(getTimestamp()))
 	// trim leading zeroes

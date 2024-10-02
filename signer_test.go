@@ -20,10 +20,7 @@ func TestSignerSign(t *testing.T) {
 		t.Run(test.input, func(t *testing.T) {
 			sig := NewSigner("secret_key", "salt")
 
-			actual, err := sig.Sign(test.input)
-			if err != nil {
-				t.Fatalf("Sign(%s) returned error: %s", test.input, err)
-			}
+			actual := sig.Sign(test.input)
 			if actual != test.expected {
 				t.Errorf("Sign(%s) got %s; want %s", test.input, actual, test.expected)
 			}
@@ -86,10 +83,7 @@ func TestTimestampSignerSign(t *testing.T) {
 
 			sig := NewTimestampSigner("secret_key", "salt")
 
-			actual, err := sig.Sign(test.input)
-			if err != nil {
-				t.Fatalf("Sign(%s) returned error: %s", test.input, err)
-			}
+			actual := sig.Sign(test.input)
 			if actual != test.expected {
 				t.Errorf("Sign(%s) got %#v; want %#v", test.input, actual, test.expected)
 			}
