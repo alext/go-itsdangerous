@@ -28,8 +28,15 @@ type Signer struct {
 	Algorithm     SigningAlgorithm
 }
 
-// NewSigner creates a new Signer
-func NewSigner(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) *Signer {
+// NewSigner creates a new Signer with the given secret and salt. All other
+// properties will be set to match the Python itsdangerous defaults.
+func NewSigner(secret, salt string) *Signer {
+	return NewSignerWithOptions(secret, salt, "", "", nil, nil)
+}
+
+// NewSignerWithOptions creates a new Signer allowing overiding the default
+// properties.
+func NewSignerWithOptions(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) *Signer {
 	if salt == "" {
 		salt = "itsdangerous.Signer"
 	}
@@ -138,9 +145,17 @@ type TimestampSigner struct {
 	Signer
 }
 
-// NewTimestampSigner creates a new TimestampSigner
-func NewTimestampSigner(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) *TimestampSigner {
-	s := NewSigner(secret, salt, sep, derivation, digest, algo)
+// NewTimestampSigner creates a new TimestampSigner with the given secret and
+// salt. All other properties will be set to match the Python itsdangerous
+// defaults.
+func NewTimestampSigner(secret, salt string) *TimestampSigner {
+	return NewTimestampSignerWithOptions(secret, salt, "", "", nil, nil)
+}
+
+// NewTimestampSignerWithOptions creates a new TimestampSigner allowing
+// overiding the default properties.
+func NewTimestampSignerWithOptions(secret, salt, sep, derivation string, digest func() hash.Hash, algo SigningAlgorithm) *TimestampSigner {
+	s := NewSignerWithOptions(secret, salt, sep, derivation, digest, algo)
 	return &TimestampSigner{Signer: *s}
 }
 

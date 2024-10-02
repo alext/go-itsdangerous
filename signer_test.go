@@ -18,7 +18,7 @@ func TestSignerSign(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.input, func(t *testing.T) {
-			sig := NewSigner("secret_key", "salt", "", "", nil, nil)
+			sig := NewSigner("secret_key", "salt")
 
 			actual, err := sig.Sign(test.input)
 			if err != nil {
@@ -43,7 +43,7 @@ func TestSignerUnsign(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.input, func(t *testing.T) {
-			sig := NewSigner("secret_key", "salt", "", "", nil, nil)
+			sig := NewSigner("secret_key", "salt")
 
 			actual, err := sig.Unsign(test.input)
 			if test.expectError {
@@ -84,7 +84,7 @@ func TestTimestampSignerSign(t *testing.T) {
 				defer func() { NowFunc = time.Now }()
 			}
 
-			sig := NewTimestampSigner("secret_key", "salt", "", "", nil, nil)
+			sig := NewTimestampSigner("secret_key", "salt")
 
 			actual, err := sig.Sign(test.input)
 			if err != nil {
@@ -128,7 +128,7 @@ func TestTimestampSignerUnsign(t *testing.T) {
 				defer func() { NowFunc = time.Now }()
 			}
 
-			sig := NewTimestampSigner("secret_key", "salt", "", "", nil, nil)
+			sig := NewTimestampSigner("secret_key", "salt")
 
 			actual, err := sig.Unsign(test.input, test.maxAge)
 			if test.expectError {
