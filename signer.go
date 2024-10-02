@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"hash"
 	"strings"
+	"time"
 )
 
 // Signer can sign bytes and unsign it and validate the signature
@@ -173,7 +174,7 @@ func (s *TimestampSigner) Sign(value string) (string, error) {
 }
 
 // Unsign the given string.
-func (s *TimestampSigner) Unsign(value string, maxAge uint32) (string, error) {
+func (s *TimestampSigner) Unsign(value string, maxAge time.Duration) (string, error) {
 	result, err := s.Signer.Unsign(value)
 	if err != nil {
 		return "", err
@@ -202,8 +203,9 @@ func (s *TimestampSigner) Unsign(value string, maxAge uint32) (string, error) {
 	var timestamp = int64(binary.BigEndian.Uint64(tsBytes))
 
 	if maxAge > 0 {
-		if age := getTimestamp() - timestamp; uint32(age) > maxAge {
-			return "", fmt.Errorf("signature age %d > %d seconds", age, maxAge)
+		maxAgeSecs := int64(maxAge.Seconds())
+		if age := getTimestamp() - timestamp; age > maxAgeSecs {
+			return "", fmt.Errorf("signature age %d > %d seconds", age, maxAgeSecs)
 		}
 	}
 	return val, nil

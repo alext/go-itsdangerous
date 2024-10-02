@@ -102,23 +102,23 @@ func TestTimestampSignerUnsign(t *testing.T) {
 		input       string
 		expected    string
 		now         time.Time
-		maxAge      uint32
+		maxAge      time.Duration
 		expectError bool
 	}{
 		// Signature within maxAge
 		{input: "my string.Zva6YA.aqBNzGvNEDkO6RGFPEX1HIhz0vU", expected: "my string",
-			now: time.Date(2024, 9, 27, 14, 4, 59, 0, time.UTC), maxAge: 5 * 60},
+			now: time.Date(2024, 9, 27, 14, 4, 59, 0, time.UTC), maxAge: 5 * time.Minute},
 		// signature expired
 		{input: "my string.Zva6YA.aqBNzGvNEDkO6RGFPEX1HIhz0vU", expectError: true,
-			now: time.Date(2024, 9, 27, 14, 5, 1, 0, time.UTC), maxAge: 5 * 60},
+			now: time.Date(2024, 9, 27, 14, 5, 1, 0, time.UTC), maxAge: 5 * time.Minute},
 		// maxAge zero always validates
 		{input: "my string.Zva6YA.aqBNzGvNEDkO6RGFPEX1HIhz0vU", expected: "my string",
 			now: time.Date(2024, 9, 27, 14, 5, 1, 0, time.UTC), maxAge: 0},
 		// Test with timestamp > 4 bytes
 		{input: "my string.ASMOinA.eGqsFVFmYbv8t7tXD8PX7LHSXdY", expected: "my string",
-			now: time.Date(2124, 9, 27, 15, 4, 59, 0, time.UTC), maxAge: 5 * 60},
+			now: time.Date(2124, 9, 27, 15, 4, 59, 0, time.UTC), maxAge: 5 * time.Minute},
 		{input: "my string.ASMOinA.eGqsFVFmYbv8t7tXD8PX7LHSXdY", expectError: true,
-			now: time.Date(2124, 9, 27, 15, 5, 1, 0, time.UTC), maxAge: 5 * 60},
+			now: time.Date(2124, 9, 27, 15, 5, 1, 0, time.UTC), maxAge: 5 * time.Minute},
 	}
 	for _, test := range tests {
 		test := test
