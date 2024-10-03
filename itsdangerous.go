@@ -12,9 +12,6 @@ import (
 	"time"
 )
 
-// 2011/01/01 in UTC
-const EPOCH = 1293840000
-
 // Encodes a single string. The resulting string is safe for putting into URLs.
 func base64Encode(src []byte) string {
 	return base64.RawURLEncoding.EncodeToString(src)
@@ -25,8 +22,12 @@ func base64Decode(s string) ([]byte, error) {
 	return base64.RawURLEncoding.DecodeString(s)
 }
 
+// Function used to obtain the current time. Defaults to time.Now, but can be
+// overridden eg for unit tests to simulate a different current time.
+var NowFunc = time.Now
+
 // Returns the current timestamp.  This implementation returns the
-// seconds since 1/1/2011.
+// seconds since January 1, 1970 UTC.
 func getTimestamp() uint32 {
-	return uint32(time.Now().Unix() - EPOCH)
+	return uint32(NowFunc().Unix())
 }
