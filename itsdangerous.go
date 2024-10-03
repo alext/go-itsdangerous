@@ -28,6 +28,6 @@ var NowFunc = time.Now
 
 // Returns the current timestamp.  This implementation returns the
 // seconds since January 1, 1970 UTC.
-func getTimestamp() uint32 {
-	return uint32(NowFunc().Unix())
+func getTimestamp() int64 {
+	return NowFunc().Unix()
 }
