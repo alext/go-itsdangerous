@@ -115,11 +115,10 @@ func (s *Signer) Sign(value string) string {
 
 // Unsign the given string.
 func (s *Signer) Unsign(signed string) (string, error) {
-	if !strings.Contains(signed, s.sep) {
+	li := strings.LastIndex(signed, s.sep)
+	if li < 0 {
 		return "", fmt.Errorf("no %s found in value", s.sep)
 	}
-
-	li := strings.LastIndex(signed, s.sep)
 	value, sig := signed[:li], signed[li+len(s.sep):]
 
 	if ok, _ := s.verifySignature(value, sig); ok == true {
@@ -172,12 +171,11 @@ func (s *TimestampSigner) Unsign(value string, maxAge time.Duration) (string, er
 		return "", err
 	}
 
-	// If there is no timestamp in the result there is something seriously wrong.
-	if !strings.Contains(result, s.sep) {
+	li := strings.LastIndex(result, s.sep)
+	if li < 0 {
+		// If there is no timestamp in the result there is something seriously wrong.
 		return "", errors.New("timestamp missing")
 	}
-
-	li := strings.LastIndex(result, s.sep)
 	val, ts := result[:li], result[li+len(s.sep):]
 
 	tsBytes, err := base64Decode(ts)

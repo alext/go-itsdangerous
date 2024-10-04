@@ -36,6 +36,8 @@ func TestSignerUnsign(t *testing.T) {
 	}{
 		{input: "my string.xv0r21ogoygusbkJA01c4OxsAio", expected: "my string"},
 		{input: "altered string.xv0r21ogoygusbkJA01c4OxsAio", expectError: true},
+		// missing separator
+		{input: "my stringxv0r21ogoygusbkJA01c4OxsAio", expectError: true},
 	}
 	for _, test := range tests {
 		test := test
@@ -113,6 +115,9 @@ func TestTimestampSignerUnsign(t *testing.T) {
 			now: time.Date(2124, 9, 27, 15, 4, 59, 0, time.UTC), maxAge: 5 * time.Minute},
 		{input: "my string.ASMOinA.eGqsFVFmYbv8t7tXD8PX7LHSXdY", expectError: true,
 			now: time.Date(2124, 9, 27, 15, 5, 1, 0, time.UTC), maxAge: 5 * time.Minute},
+		// Test with missing timestamp
+		{input: "my string.xv0r21ogoygusbkJA01c4OxsAio", expectError: true,
+			now: time.Date(2024, 9, 27, 14, 4, 59, 0, time.UTC), maxAge: 5 * time.Minute},
 	}
 	for _, test := range tests {
 		test := test
