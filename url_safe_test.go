@@ -47,7 +47,8 @@ func TestURLSafeSerializerMarshal(t *testing.T) {
 				}
 			}
 
-			decoded, err := sig.Unmarshal(signed)
+			var decoded interface{}
+			err = sig.Unmarshal(signed, &decoded)
 			if err != nil {
 				t.Fatalf("Marshal result could not be unmarshalled: %s", err)
 			}
@@ -76,7 +77,8 @@ func TestURLSafeSerializerUnmarshal(t *testing.T) {
 		t.Run(test.input, func(t *testing.T) {
 			sig := NewURLSafeSerializer("secret_key", "salt")
 
-			actual, err := sig.Unmarshal(test.input)
+			var actual interface{}
+			err := sig.Unmarshal(test.input, &actual)
 			if test.expectError {
 				if err == nil {
 					t.Fatalf("Unmarshal(%s) expected error; got no error", test.input)
@@ -143,7 +145,8 @@ func TestURLSafeTimedSerializerMarshal(t *testing.T) {
 				}
 			}
 
-			decoded, err := sig.Unmarshal(signed, 0)
+			var decoded interface{}
+			err = sig.Unmarshal(signed, &decoded, 0)
 			if err != nil {
 				t.Fatalf("Marshal result could not be unmarshalled: %s", err)
 			}
@@ -190,7 +193,8 @@ func TestURLSafeTimedSerializerUnmarshal(t *testing.T) {
 
 			sig := NewURLSafeTimedSerializer("secret_key", "salt")
 
-			actual, err := sig.Unmarshal(test.input, test.maxAge)
+			var actual interface{}
+			err := sig.Unmarshal(test.input, &actual, test.maxAge)
 			if test.expectError {
 				if err == nil {
 					t.Fatalf("Unmarshal(%s) expected error; got no error", test.input)
