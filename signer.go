@@ -117,14 +117,14 @@ func (s *Signer) Sign(value string) string {
 func (s *Signer) Unsign(signed string) (string, error) {
 	li := strings.LastIndex(signed, s.sep)
 	if li < 0 {
-		return "", fmt.Errorf("no %s found in value", s.sep)
+		return "", InvalidSignatureError{fmt.Errorf("no %s found in value", s.sep)}
 	}
 	value, sig := signed[:li], signed[li+len(s.sep):]
 
 	if ok, _ := s.verifySignature(value, sig); ok == true {
 		return value, nil
 	}
-	return "", fmt.Errorf("signature %s does not match", sig)
+	return "", InvalidSignatureError{fmt.Errorf("signature does not match")}
 }
 
 // TimestampSigner works like the regular Signer but also records the time
@@ -174,7 +174,7 @@ func (s *TimestampSigner) Unsign(value string, maxAge time.Duration) (string, er
 	li := strings.LastIndex(result, s.sep)
 	if li < 0 {
 		// If there is no timestamp in the result there is something seriously wrong.
-		return "", errors.New("timestamp missing")
+		return "", InvalidSignatureError{errors.New("timestamp missing")}
 	}
 	val, ts := result[:li], result[li+len(s.sep):]
 
@@ -195,7 +195,7 @@ func (s *TimestampSigner) Unsign(value string, maxAge time.Duration) (string, er
 	if maxAge > 0 {
 		maxAgeSecs := int64(maxAge.Seconds())
 		if age := getTimestamp() - timestamp; age > maxAgeSecs {
-			return "", fmt.Errorf("signature age %d > %d seconds", age, maxAgeSecs)
+			return "", signatureExpired(age, maxAgeSecs)
 		}
 	}
 	return val, nil

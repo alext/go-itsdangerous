@@ -1,6 +1,7 @@
 package itsdangerous
 
 import (
+	"errors"
 	"testing"
 	"time"
 )
@@ -49,6 +50,9 @@ func TestSignerUnsign(t *testing.T) {
 				if err == nil {
 					t.Fatalf("Unsign(%s) expected error; got no error", test.input)
 				}
+				if !errors.As(err, &InvalidSignatureError{}) {
+					t.Fatalf("Unsign(%s) expected InvalidSignatureError; got %T(%s)", test.input, err, err.Error())
+				}
 			} else {
 				if err != nil {
 					t.Fatalf("Unsign(%s) returned error: %s", test.input, err)
@@ -95,17 +99,18 @@ func TestTimestampSignerSign(t *testing.T) {
 
 func TestTimestampSignerUnsign(t *testing.T) {
 	tests := []struct {
-		input       string
-		expected    string
-		now         time.Time
-		maxAge      time.Duration
-		expectError bool
+		input         string
+		expected      string
+		now           time.Time
+		maxAge        time.Duration
+		expectError   bool
+		expectExpired bool
 	}{
 		// Signature within maxAge
 		{input: "my string.Zva6YA.aqBNzGvNEDkO6RGFPEX1HIhz0vU", expected: "my string",
 			now: time.Date(2024, 9, 27, 14, 4, 59, 0, time.UTC), maxAge: 5 * time.Minute},
 		// signature expired
-		{input: "my string.Zva6YA.aqBNzGvNEDkO6RGFPEX1HIhz0vU", expectError: true,
+		{input: "my string.Zva6YA.aqBNzGvNEDkO6RGFPEX1HIhz0vU", expectError: true, expectExpired: true,
 			now: time.Date(2024, 9, 27, 14, 5, 1, 0, time.UTC), maxAge: 5 * time.Minute},
 		// maxAge zero always validates
 		{input: "my string.Zva6YA.aqBNzGvNEDkO6RGFPEX1HIhz0vU", expected: "my string",
@@ -113,7 +118,7 @@ func TestTimestampSignerUnsign(t *testing.T) {
 		// Test with timestamp > 4 bytes
 		{input: "my string.ASMOinA.eGqsFVFmYbv8t7tXD8PX7LHSXdY", expected: "my string",
 			now: time.Date(2124, 9, 27, 15, 4, 59, 0, time.UTC), maxAge: 5 * time.Minute},
-		{input: "my string.ASMOinA.eGqsFVFmYbv8t7tXD8PX7LHSXdY", expectError: true,
+		{input: "my string.ASMOinA.eGqsFVFmYbv8t7tXD8PX7LHSXdY", expectError: true, expectExpired: true,
 			now: time.Date(2124, 9, 27, 15, 5, 1, 0, time.UTC), maxAge: 5 * time.Minute},
 		// Test with missing timestamp
 		{input: "my string.xv0r21ogoygusbkJA01c4OxsAio", expectError: true,
@@ -133,6 +138,18 @@ func TestTimestampSignerUnsign(t *testing.T) {
 			if test.expectError {
 				if err == nil {
 					t.Fatalf("Unsign(%s) expected error; got no error", test.input)
+				}
+				if !errors.As(err, &InvalidSignatureError{}) {
+					t.Fatalf("Unsign(%s) expected InvalidSignatureError; got %T(%s)", test.input, err, err.Error())
+				}
+				if test.expectExpired {
+					if !errors.As(err, &SignatureExpiredError{}) {
+						t.Fatalf("Unsign(%s) expected SignatureExpiredError; got %T(%s)", test.input, err, err.Error())
+					}
+				} else {
+					if errors.As(err, &SignatureExpiredError{}) {
+						t.Fatalf("Unsign(%s) expected not to get a SignatureExpiredError; got %s", test.input, err.Error())
+					}
 				}
 			} else {
 				if err != nil {
