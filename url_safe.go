@@ -27,13 +27,13 @@ func (s *URLSafeSerializer) Marshal(value interface{}) (string, error) {
 	return s.Signer.Sign(encoded), nil
 }
 
-func (s *URLSafeSerializer) Unmarshal(value string) (interface{}, error) {
-	result, err := s.Signer.Unsign(value)
+func (s *URLSafeSerializer) Unmarshal(signed string, v interface{}) error {
+	result, err := s.Signer.Unsign(signed)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return urlSafeDeserialize(result)
+	return urlSafeDeserialize(result, v)
 }
 
 type URLSafeTimedSerializer struct {
@@ -54,13 +54,13 @@ func (s *URLSafeTimedSerializer) Marshal(value interface{}) (string, error) {
 	return s.TimestampSigner.Sign(encoded), nil
 }
 
-func (s *URLSafeTimedSerializer) Unmarshal(value string, maxAge time.Duration) (interface{}, error) {
-	result, err := s.TimestampSigner.Unsign(value, maxAge)
+func (s *URLSafeTimedSerializer) Unmarshal(signed string, v interface{}, maxAge time.Duration) error {
+	result, err := s.TimestampSigner.Unsign(signed, maxAge)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return urlSafeDeserialize(result)
+	return urlSafeDeserialize(result, v)
 }
 
 func urlSafeSerialize(value interface{}) (string, error) {
@@ -93,7 +93,7 @@ func urlSafeSerialize(value interface{}) (string, error) {
 	return encoded, nil
 }
 
-func urlSafeDeserialize(encoded string) (interface{}, error) {
+func urlSafeDeserialize(encoded string, v interface{}) error {
 	decompress := false
 	if encoded[0] == '.' {
 		decompress = true
@@ -102,26 +102,25 @@ func urlSafeDeserialize(encoded string) (interface{}, error) {
 
 	decoded, err := base64Decode(encoded)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if decompress {
 		zr, err := zlib.NewReader(bytes.NewReader(decoded))
 		if err != nil {
-			return nil, fmt.Errorf("Error decompressing payload: %w", err)
+			return fmt.Errorf("Error decompressing payload: %w", err)
 		}
 		defer zr.Close()
 		decoded, err = io.ReadAll(zr)
 		if err != nil {
-			return nil, fmt.Errorf("Error decompressing payload: %w", err)
+			return fmt.Errorf("Error decompressing payload: %w", err)
 		}
 	}
 
-	var payload interface{}
-	err = json.Unmarshal([]byte(decoded), &payload)
+	err = json.Unmarshal([]byte(decoded), v)
 	if err != nil {
-		return nil, fmt.Errorf("error JSON unmarshalling payload: %w", err)
+		return fmt.Errorf("error JSON unmarshalling payload: %w", err)
 	}
 
-	return payload, nil
+	return nil
 }
