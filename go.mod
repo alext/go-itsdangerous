@@ -1,3 +1,3 @@
-module github.com/junohq/go-itsdangerous
+module github.com/alext/go-itsdangerous
 
 go 1.22
