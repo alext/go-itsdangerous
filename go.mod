@@ -1,3 +1,3 @@
-module github.com/iromli/go-itsdangerous
+module github.com/alext/go-itsdangerous
 
-go 1.16
+go 1.21
