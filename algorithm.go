@@ -2,14 +2,13 @@ package itsdangerous
 
 import (
 	"crypto/hmac"
-	"crypto/subtle"
 	"hash"
 )
 
 // SigningAlgorithm provides interfaces to generate and verify signature
 type SigningAlgorithm interface {
-	GetSignature(key, value string) []byte
-	VerifySignature(key, value string, sig []byte) bool
+	GetSignature(key []byte, value string) []byte
+	VerifySignature(key []byte, value string, signature []byte) bool
 }
 
 // HMACAlgorithm provides signature generation using HMACs.
@@ -18,15 +17,16 @@ type HMACAlgorithm struct {
 }
 
 // GetSignature returns the signature for the given key and value.
-func (a *HMACAlgorithm) GetSignature(key, value string) []byte {
-	a.DigestMethod().Reset()
-	h := hmac.New(func() hash.Hash { return a.DigestMethod() }, []byte(key))
+func (a *HMACAlgorithm) GetSignature(key []byte, value string) []byte {
+	h := hmac.New(a.DigestMethod, key)
 	h.Write([]byte(value))
 	return h.Sum(nil)
 }
 
 // VerifySignature verifies the given signature matches the expected signature.
-func (a *HMACAlgorithm) VerifySignature(key, value string, sig []byte) bool {
-	eq := subtle.ConstantTimeCompare(sig, []byte(a.GetSignature(key, value)))
-	return eq == 1
+func (a *HMACAlgorithm) VerifySignature(key []byte, value string, signature []byte) bool {
+	return hmac.Equal(
+		signature,
+		a.GetSignature(key, value),
+	)
 }
